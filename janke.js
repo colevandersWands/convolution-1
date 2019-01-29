@@ -37,9 +37,9 @@ function janke (args) {
     meta = 'no meta here';                                    
   };
 
-  let instance;
+  let instance
   with (clean_args) { 
-    instance = function (arg, args) {    // args is used only when passing in functions
+    instance = function me(arg, args) {    // args is used only when passing in functions
 
       // call to meta method
       if (arg instanceof Array) {                               const new_entry = {arg:copy(arg)};
@@ -48,19 +48,22 @@ function janke (args) {
           if (!(meta instanceof janke)) {                       new_entry.you = 'killed meta';
                                                                 log.push(new_entry);
             return 'you killed meta';
-          };
-          try {
-            const result = meta.meta(...arg);                   new_entry.result = copy(result);
-                                                                log.push(new_entry);
-            if (result instanceof Error) {                    
-              throw result;
-            } else {
-              return result;
+
+          } else {
+            try {
+              const result = meta.meta(...arg);                   new_entry.result = copy(result);
+                                                                  log.push(new_entry);
+              if (result instanceof Error) {                    
+                throw result;
+              } else {
+                return result;
+              };
+            } catch (err) {                                       new_entry.error = err;
+                                                                  log.push(new_entry);
+              throw err;
             };
-          } catch (err) {                                       new_entry.error = err;
-                                                                log.push(new_entry);
-            throw err;
           };
+
         } else {                                                new_entry.no = 'meta here';
                                                                 log.push(new_entry);
           return meta;
@@ -85,9 +88,10 @@ function janke (args) {
 
       // update state directly by passing in partial states
       // return the instance itself for chaining
-      } else if (isObject(arg)) {                               const new_entry = [{arg:copy(arg)}];
+      } else if (isObject(arg)) {                               const new_entry = {arg:copy(arg)};
         const new_state = update_state(arg, copy(state));       new_entry.old_state = copy(state);
-        state = new_state;                                      new_entry.new_state = copy(new_state)
+        state = new_state;                                      new_entry.new_state = copy(new_state);
+                                                                log.push(new_entry);
         return instance;
 
 
@@ -96,18 +100,21 @@ function janke (args) {
       //    (single or payload, up to you)
       //  then updates state with the result
       // used by curried functions
-      } else if (arg instanceof Function) {                     const new_entry = {arg, args};
-        const result = arg(copy(state), args);                  new_entry.result = copy(result);
-        if (result instanceof Error) {                          new_entry.state = copy(state);
-                                                                new_entry.error = result;  
+      } else if (arg instanceof Function) {                     const new_entry = {func: arg.toString(), args};
+        try {
+          const result = arg(copy(state), args);                
+          if (result instanceof Error) {                        new_entry.handled_error = result;  
                                                                 log.push(new_entry); 
-          throw result;                                      
+            throw result;                                      
 
-        } else {                                             
-          const old_state = copy(state);                        new_entry.old_state = old_state;
-          const new_state = update_state(result, old_state);    new_entry.new_state = copy(new_state);
-          state = new_state;                                    log.push(new_entry);
-          return result;
+          } else {                                              new_entry.result = result;
+                                                                log.push(new_entry);
+            return me(result);
+
+          };
+        } catch(err) {                                          new_entry.unhandled_error = err;   
+                                                                log.push(new_entry);
+          throw err;
         };
 
       // return a copy of the log
@@ -124,7 +131,7 @@ function janke (args) {
 
 
       // return a copy of the name
-      } else if (arg === 'name') {                               const new_entry = {name};
+      } else if (arg === 'name') {                              const new_entry = {name};
                                                                 log.push(new_entry);
         return name;
 
@@ -137,15 +144,28 @@ function janke (args) {
 
 
 
-      // return a copy of the name
+      // free-variable 'this' cache
+      //  you can bind your instance to an object
+      //  call it with one
+      //  or set it as a property in different objects 
+      //    for more flexibility
+      // caches are logged by reference
+      //  since they're temporary and dynamic
+      //  it makes sense to know which one was active 
+      //  rather than what was in it
       } else if (arg === 'cache') {                             const new_entry = {};
-        if ( isObject(args) ) {                                 
-          Object.assign(this, args);                            new_entry.cache = copy(this);       
+        if (this instanceof Window) {                           new_entry.no = 'cache here';
                                                                 log.push(new_entry);
-          return this;  
-        } else {                                                new_entry.cache = copy(this);
+          return 'no cache here';
+        } else {                                                
+          if ( isObject(args) ) {                               
+            Object.assign(this, args);                          new_entry.cache = this;       
                                                                 log.push(new_entry);
-          return this;
+            return this;  
+          } else {                                              new_entry.cache = this;
+                                                                log.push(new_entry);
+            return this;
+          };
         };
 
 
@@ -161,11 +181,8 @@ function janke (args) {
         return copy(log);
 
       };
-    };
+    };                     
 
-    // bind to an empty cache object
-    instance = instance.bind({});                        
-                      
     // allows to insert note into log whenever a thing is done
     //  inserts the note and returns a reference to the instance
     instance.note = function(arg) {                             // no need to log this function
@@ -224,7 +241,7 @@ function janke (args) {
       if ( isObject(args.state) ) {
 
         // attach a currying method
-        instance.curry = function(func) {
+        instance.state_currier = function(func) {
           if (func instanceof Function) {
             function to_wrap() {
               return func(state)(...arguments);
@@ -235,7 +252,7 @@ function janke (args) {
           };
         };
 
-        instance.bind = function(func) {
+        instance.state_binder = function(func) {
           if (func instanceof Function) {
             function to_wrap() {
               return func.bind(state)(...arguments);   
@@ -252,11 +269,9 @@ function janke (args) {
         // attach pure functions
         for (const _function in functions) {
           if (functions[_function] instanceof Function) {
-            const functionow = functions[_function];
             const story = _function;
-            function to_wrap() {
-              return functionow(state, ...arguments);
-            };
+            const functionow = functions[_function];
+            const to_wrap = functionow.bind(null, state)
             instance[_function] = log_wrapper(to_wrap, story);
           };
         };
