@@ -131,8 +131,7 @@ function janke (args) {
 
 
       // return a reference to all functions, actions, methods
-      } else if (arg === 'stories') {                           const new_entry = {arg};
-                                                                new_entry.stories = {actions, methods, functions};
+      } else if (arg === 'stories') {                           const new_entry = {stories};
                                                                 log.push(new_entry);
         return {actions, methods, functions};
 
@@ -142,7 +141,7 @@ function janke (args) {
         return null;
 
 
-      // i don't do that
+      // add a note to the log and return it
       } else {                                                  log.push(arg);
         return copy(log);
 
@@ -173,6 +172,13 @@ function janke (args) {
       };
       this(arg);
       return this;
+    };
+
+    // sets meta as prototype of an object
+    if (newed) {
+      instance.enmeta = function(obj) {
+        return Object.setPrototypeOf(obj, meta);
+      };
     };
 
     if ( isObject(args) ) {
