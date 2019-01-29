@@ -319,7 +319,8 @@ janke.prototype.word = () => 'word'
 janke.prototype.meta = function(pie){
                                 return {meta: this, pie, word: this.word()};
                                 /* 
-                                  passing an object to your app will cause it to call this methods.
+                                  passing an array to your app will cause it to call this methods.
+                                    the array will be spread into this function
                                   'this' inside here will be set to your app's 'meta' with a property
                                   pointing to state, actions, methods, functions, log & name
                                   as well as access to anything else attached to this prototype
