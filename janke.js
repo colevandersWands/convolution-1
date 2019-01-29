@@ -88,7 +88,7 @@ function janke (args) {
       } else if (isObject(arg)) {                               const new_entry = [{arg:copy(arg)}];
         const new_state = update_state(arg, copy(state));       new_entry.old_state = copy(state);
         state = new_state;                                      new_entry.new_state = copy(new_state)
-        return this;
+        return instance;
 
 
       // executes any function passed with first param as state
@@ -136,20 +136,35 @@ function janke (args) {
         return {actions, methods, functions};
 
 
+
+      // return a copy of the name
+      } else if (arg === 'cache') {                             const new_entry = {};
+        if ( isObject(args) ) {                                 
+          Object.assign(this, args);                            new_entry.cache = copy(this);       
+                                                                log.push(new_entry);
+          return this;  
+        } else {                                                new_entry.cache = copy(this);
+                                                                log.push(new_entry);
+          return this;
+        };
+
+
       // because nothing in javascript returns null
-      } else if ( arg === undefined ) {                         log.push({undefined:null});
+      } else if ( arg === undefined ) {                         const new_entry = {undefined: null};
+                                                                log.push(new_entry);
         return null;
 
 
       // add a note to the log and return it
-      } else {                                                  log.push(arg);
+      } else {                                                  const new_entry = {note: copy(arg)};
+                                                                log.push(new_entry);
         return copy(log);
 
       };
     };
 
-    // bind to itself for object-args chaining
-    instance = instance.bind(instance);                        
+    // bind to an empty cache object
+    instance = instance.bind({});                        
                       
     // allows to insert note into log whenever a thing is done
     //  inserts the note and returns a reference to the instance
@@ -167,6 +182,7 @@ function janke (args) {
         || arg === 'log' 
         || arg === 'meta' 
         || arg === 'name' 
+        || arg === 'cache' 
         || arg === 'stories' ) {
           throw new Error('notes can\'t be key words');
       };
