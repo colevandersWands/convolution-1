@@ -209,9 +209,9 @@ function janke (args) {
 
     // wraps all actions, functions, methods, curried or bound functions
     //  anywhere anything happens to state, you will know
-    function log_wrapper(wrapped, story) {
+    function log_wrapper(wrapped, name) {
       return function() {                                     const new_entry = {args:[...arguments]};
-                                                              new_entry.story = story;
+                                                              new_entry.name = name;
         const result = wrapped(...arguments);                 new_entry.result = copy(result);
         if (result instanceof Error) {                        new_entry.state = copy(state);
                                                               new_entry.error = result;  
@@ -236,19 +236,19 @@ function janke (args) {
     if ( isObject(args.state) ) {
 
       // attach a currying method
-      instance.currier = function(func) {
+      instance.currier = function(func, name) {
         if (func instanceof Function) {
           const to_wrap = func(state);
-          return log_wrapper(to_wrap, 'something curried'); 
+          return log_wrapper(to_wrap, name ? name : 'something curried'); 
         } else {
           throw new Error('can only curry functions');
         };
       };
 
-      instance.binder = function(func) {
+      instance.binder = function(func, name) {
         if (func instanceof Function) {
           const to_wrap = func.bind(state);
-          return log_wrapper(to_wrap, 'something bound');
+          return log_wrapper(to_wrap, name ? name : 'something bound');
         } else {
           throw new Error('can only bind functions');
         };
