@@ -1,6 +1,6 @@
 ## Janke: the framework
 
-it does nearly all of javascript, so it can be used to introduce techniques first by using it them by studying the source.
+it does nearly all of javascript, so it can be used to introduce techniques first by using it then by studying the source.
 
 documentation and tests coming soon
 
