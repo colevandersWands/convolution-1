@@ -153,8 +153,8 @@ function janke (args) {
                       
     // allows to insert note into log whenever a thing is done
     //  inserts the note and returns a reference to the instance
-    instance.note = function(arg) {
-      if ( isObject(arg) ) {
+    instance.note = function(arg) {                             // no need to log this function
+      if ( isObject(arg) ) {                                    // it is logging embodied
         throw new Error('notes can\'t be objects');
       };
       if ( arg instanceof Array ) {
@@ -176,8 +176,9 @@ function janke (args) {
 
     // sets meta as prototype of an object
     if (newed) {
-      instance.enmeta = function(obj) {
-        return Object.setPrototypeOf(obj, meta);
+      instance.enmeta = function(obj) {                         const new_entry = {enmeta: obj};
+                                                                log.push(new_entry);
+        return Object.setPrototypeOf(obj, meta);                  
       };
     };
 
