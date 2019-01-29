@@ -39,7 +39,7 @@ function janke (args) {
 
   let instance
   with (clean_args) { 
-    instance = function me(arg, args) {    // args is used only when passing in functions
+    instance = function me(arg) {
 
       // call to meta method
       if (arg instanceof Array) {                               const new_entry = {metarg: copy(arg)};
@@ -87,14 +87,11 @@ function janke (args) {
         return instance;
 
 
-      // executes any function passed with first param as state
-      //  and expects args to be the additional argument 
-      //    (single or payload, up to you)
-      //  then updates state with the result
-      // used by curried functions
-      } else if (arg instanceof Function) {                     const new_entry = {func: arg.toString(), args};
+      // calls args with a copy of state
+      //  allows updating state with curried functions
+      } else if (arg instanceof Function) {                     const new_entry = {func: arg.toString()};
         try {
-          const result = arg(copy(state), args);                
+          const result = arg(copy(state));                
           if (result instanceof Error) {                        new_entry.handled_error = result;  
                                                                 log.push(new_entry); 
             throw result;                                      
@@ -120,19 +117,14 @@ function janke (args) {
       //  it makes sense to know which one was active 
       //  rather than what was in it
       // many instances, one shared cache 
+      // eventually, make this work in node as well
       } else if (arg === 'cache') {                             const new_entry = {};
         if (this instanceof Window) {                           new_entry.no = 'cache here';
                                                                 log.push(new_entry);
           return 'no cache here';
-        } else {                                                
-          if ( isObject(args) ) {                               
-            Object.assign(this, args);                          new_entry.cache = this;       
+        } else {                                                new_entry.cache = this;
                                                                 log.push(new_entry);
-            return this;  
-          } else {                                              new_entry.cache = this;
-                                                                log.push(new_entry);
-            return this;
-          };
+          return this;
         };
 
 
