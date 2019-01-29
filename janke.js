@@ -68,7 +68,7 @@ function janke (args) {
 
 
       // return meta object, if it exists
-      } else if (arg === 'meta') {                              const new_entry = {arg};
+      } else if (arg === 'meta') {                              const new_entry = {};
         if (newed) {                                    
           if (meta instanceof janke) {                          new_entry.meta_copy = copy(meta);
                                                                 log.push(new_entry);
@@ -82,21 +82,42 @@ function janke (args) {
           return meta;
         };
 
+
+      // update state directly by passing in partial states
+      // return the instance itself for chaining
       } else if (isObject(arg)) {                               const new_entry = [{arg:copy(arg)}];
         const new_state = update_state(arg, copy(state));       new_entry.old_state = copy(state);
         state = new_state;                                      new_entry.new_state = copy(new_state)
         return this;
 
+
+      // executes any function passed with first param as state
+      //  and expects args to be the additional argument 
+      //    (single or payload, up to you)
+      //  then updates state with the result
+      // used by curried functions
+      } else if (arg instanceof Function) {                     const new_entry = {arg, args};
+        const result = arg(copy(state), args);                  new_entry.result = copy(result);
+        if (result instanceof Error) {                          new_entry.state = copy(state);
+                                                                new_entry.error = result;  
+                                                                log.push(new_entry); 
+          throw result;                                      
+
+        } else {                                             
+          const old_state = copy(state);                        new_entry.old_state = old_state;
+          const new_state = update_state(result, old_state);    new_entry.new_state = copy(new_state);
+          state = new_state;                                    log.push(new_entry);
+          return result;
+        };
+
       // return a copy of the log
-      } else if (arg === 'log') {                               const new_entry = {arg};
-                                                                new_entry.log_copy = copy(log);
+      } else if (arg === 'log') {                               const new_entry = {log: copy(log)};
                                                                 log.push(new_entry);
         return copy(log);
 
 
       // return a copy of the state
-      } else if (arg === 'state') {                             const new_entry = {arg};
-                                                                new_entry.then_state = copy(state);
+      } else if (arg === 'state') {                             const new_entry = {state: copy(state)};
                                                                 log.push(new_entry);
         return copy(state);
 
@@ -116,27 +137,6 @@ function janke (args) {
         return {actions, methods, functions};
 
 
-
-      // executes any function passed with first arg as state
-      //  and expects log_info to be the additional argument 
-      //    (single or payload, up to you)
-      //  then updates state with the result
-      // used by curried functions
-      } else if (arg instanceof Function) {                     const new_entry = {arg, args};
-        const result = arg(copy(state), args);                  new_entry.result = copy(result);
-        if (result instanceof Error) {                          new_entry.state = copy(state);
-                                                                new_entry.error = result;  
-                                                                log.push(new_entry); 
-          throw result;                                      
-
-        } else {                                             
-          const old_state = copy(state);                        new_entry.old_state = old_state;
-          const new_state = update_state(result, old_state);    new_entry.new_state = copy(new_state);
-          state = new_state;                                    log.push(new_entry);
-          return result;
-        };
-
-
       // because nothing in javascript returns null
       } else if ( arg === undefined ) {                         log.push({undefined:null});
         return null;
@@ -152,6 +152,8 @@ function janke (args) {
     // bind to itself for object-args chaining
     instance = instance.bind(instance);                        
                       
+    // allows to insert note into log whenever a thing is done
+    //  inserts the note and returns a reference to the instance
     instance.note = function(arg) {
       if ( isObject(arg) ) {
         throw new Error('notes can\'t be objects');
@@ -196,7 +198,6 @@ function janke (args) {
         };
       };
 
-      // abstract a logging wrapper function
       if ( isObject(args.state) ) {
 
         // attach a currying method
