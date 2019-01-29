@@ -215,98 +215,95 @@ function janke (args) {
       return Object.freeze(methoded);
     };
 
-    if ( isObject(args) ) {
+    // wraps all actions, functions, methods, curried or bound functions
+    //  anywhere anything happens to state, you will know
+    function log_wrapper(wrapped, story) {
+      return function() {                                     const new_entry = {args:[...arguments]};
+                                                              new_entry.story = story;
+        const result = wrapped(...arguments);                 new_entry.result = copy(result);
+        if (result instanceof Error) {                        new_entry.state = copy(state);
+                                                              new_entry.error = result;  
+                                                              log.push(new_entry); 
+          throw result;                                      
 
-      // wraps all actions, functions, methods, curried or bound functions
-      //  anywhere anything happens to state, you will know
-      function log_wrapper(wrapped, story) {
-        return function() {                                     const new_entry = {args:[...arguments]};
-                                                                new_entry.story = story;
-          const result = wrapped(...arguments);                 new_entry.result = copy(result);
-          if (result instanceof Error) {                        new_entry.state = copy(state);
-                                                                new_entry.error = result;  
-                                                                log.push(new_entry); 
-            throw result;                                      
+        } else {                                             
+          const old_state = copy(state);                      new_entry.old_state = old_state;
+          const new_state = update_state(result, old_state);  new_entry.new_state = new_state;
+          for (const key in state) {
+            state[key] = new_state[key];
+          };                                                  log.push(new_entry);
+          return this;
+        };
+      };
+    };
 
-          } else {                                             
-            const old_state = copy(state);                      new_entry.old_state = old_state;
-            const new_state = update_state(result, old_state);  new_entry.new_state = new_state;
-            for (const key in state) {
-              state[key] = new_state[key];
-            };                                                  log.push(new_entry);
-            return this;
+    if ( isObject(args.state) ) {
+
+      // attach a currying method
+      instance.state_currier = function(func) {
+        if (func instanceof Function) {
+          function to_wrap() {
+            return func(copy(state))(...arguments);
           };
+          return log_wrapper(to_wrap, 'something curried'); 
+        } else {
+          throw new Error('can only curry functions');
         };
       };
 
-      if ( isObject(args.state) ) {
-
-        // attach a currying method
-        instance.state_currier = function(func) {
-          if (func instanceof Function) {
-            function to_wrap() {
-              return func(copy(state))(...arguments);
-            };
-            return log_wrapper(to_wrap, 'something curried'); 
-          } else {
-            throw new Error('can only curry functions');
+      instance.state_binder = function(func) {
+        if (func instanceof Function) {
+          function to_wrap() {
+            return func.bind(copy(state))(...arguments);   
           };
-        };
-
-        instance.state_binder = function(func) {
-          if (func instanceof Function) {
-            function to_wrap() {
-              return func.bind(copy(state))(...arguments);   
-            };
-            return log_wrapper(to_wrap, 'something bound');
-          } else {
-            throw new Error('can only bind functions');
-          };
-        };
-
-      };
-
-      if ( isObject(args.functions) ) {
-        // attach pure functions
-        for (const _function in functions) {
-          if (functions[_function] instanceof Function) {
-            const story = _function;
-            const functionow = functions[_function];
-            const to_wrap = functionow.bind(null, copy(state));
-            instance[_function] = log_wrapper(to_wrap, story);
-          };
+          return log_wrapper(to_wrap, 'something bound');
+        } else {
+          throw new Error('can only bind functions');
         };
       };
 
-      if ( isObject(args.actions) ) {
-        // attach action curriers
-        for (const action in actions) {
-          if (actions[action] instanceof Function) {
-            const actionow = actions[action](state);
-            const story = action;
-            // cant be arrow function for 'this' reasons
-            function to_wrap() {
-              return actionow(...arguments);
-            };
-            instance[action] = log_wrapper(to_wrap, story);
-          };
+    };
+
+    if ( isObject(args.functions) ) {
+      // attach pure functions
+      for (const _function in functions) {
+        if (functions[_function] instanceof Function) {
+          const story = _function;
+          const functionow = functions[_function];
+          const to_wrap = functionow.bind(null, copy(state));
+          instance[_function] = log_wrapper(to_wrap, story);
         };
       };
+    };
 
-      if ( isObject(args.methods) ) {
-        // attach bound methods
-        for (const method in methods) {
-          if (methods[method] instanceof Function) {
-            const story = method;
-            function to_wrap() {
-              return methods[method].call(state, ...arguments);   
-            };
-            instance[method] = log_wrapper(to_wrap, story);
+    if ( isObject(args.actions) ) {
+      // attach action curriers
+      for (const action in actions) {
+        if (actions[action] instanceof Function) {
+          const actionow = actions[action](state);
+          const story = action;
+          // cant be arrow function for 'this' reasons
+          function to_wrap() {
+            return actionow(...arguments);
           };
+          instance[action] = log_wrapper(to_wrap, story);
         };
-      };  
+      };
+    };
 
-    };  // end if ( isObject(args) ) 
+    if ( isObject(args.methods) ) {
+      // attach bound methods
+      for (const method in methods) {
+        if (methods[method] instanceof Function) {
+          const story = method;
+          function to_wrap() {
+            return methods[method].call(state, ...arguments);   
+          };
+          instance[method] = log_wrapper(to_wrap, story);
+        };
+      };
+    };  
+
 
   }; // end with
 
