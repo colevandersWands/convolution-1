@@ -149,7 +149,7 @@ function janke (args) {
         };
 
 
-      // because nothing in javascript returns null
+      // explicitly nothing
       } else if ( arg === undefined ) {                         const new_entry = {undefined: null};
                                                                 log.push(new_entry);
         return null;
