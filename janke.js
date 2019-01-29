@@ -119,6 +119,7 @@ function janke (args) {
       //  since they're temporary and dynamic
       //  it makes sense to know which one was active 
       //  rather than what was in it
+      // many instances, one shared cache 
       } else if (arg === 'cache') {                             const new_entry = {};
         if (this instanceof Window) {                           new_entry.no = 'cache here';
                                                                 log.push(new_entry);
@@ -145,7 +146,6 @@ function janke (args) {
       } else if (arg === 'state') {                             // const new_entry = {state: copy(state)};
                                                                 // log.push(new_entry);
         return copy(state);
-
 
 
       // return a copy of the name
@@ -208,9 +208,9 @@ function janke (args) {
 
     // binding sets the cache on a new copy of the instance
     //  but you want it to share same actions, so inherit
-    //  who cares if it's a bit slow
-    instance.bind_cache = function(cache) {
-      const bound_to_cache = instance.bind(cache);
+    //  and overwrite .bind so it works intuitively
+    instance.bind = function(cache) {
+      const bound_to_cache = Function.prototype.bind.call(instance, cache);
       const methoded = Object.setPrototypeOf(bound_to_cache, instance);
       return Object.freeze(methoded);
     };
