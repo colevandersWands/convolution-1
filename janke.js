@@ -231,10 +231,10 @@ function janke (args) {
           } else {                                             
             const old_state = copy(state);                      new_entry.old_state = old_state;
             const new_state = update_state(result, old_state);  new_entry.new_state = new_state;
-            for (const key of new_state) {
+            for (const key in state) {
               state[key] = new_state[key];
             };                                                  log.push(new_entry);
-            return result;
+            return this;
           };
         };
       };
