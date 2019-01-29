@@ -42,7 +42,7 @@ function janke (args) {
     instance = function me(arg, args) {    // args is used only when passing in functions
 
       // call to meta method
-      if (arg instanceof Array) {                               const new_entry = {arg:copy(arg)};
+      if (arg instanceof Array) {                               const new_entry = {metarg: copy(arg)};
 
         if (newed) {
           if (!(meta instanceof janke)) {                       new_entry.you = 'killed meta';
@@ -51,15 +51,15 @@ function janke (args) {
 
           } else {
             try {
-              const result = meta.meta(...arg);                   new_entry.result = copy(result);
-                                                                  log.push(new_entry);
+              const result = meta.meta(...arg);                 new_entry.result = copy(result);
+                                                                log.push(new_entry);
               if (result instanceof Error) {                    
                 throw result;
               } else {
                 return result;
               };
-            } catch (err) {                                       new_entry.error = err;
-                                                                  log.push(new_entry);
+            } catch (err) {                                     new_entry.error = err;
+                                                                log.push(new_entry);
               throw err;
             };
           };
@@ -71,27 +71,19 @@ function janke (args) {
 
 
       // return meta object, if it exists
-      } else if (arg === 'meta') {                              const new_entry = {};
-        if (newed) {                                    
-          if (meta instanceof janke) {                          new_entry.meta_copy = copy(meta);
-                                                                log.push(new_entry);
-            return copy(meta);
-          } else {                                              new_entry.meta_reference = meta;
-                                                                log.push(new_entry);
-            return meta;
-          };
-        } else {                                                new_entry.no = 'meta here';
-                                                                log.push(new_entry);
-          return meta;
-        };
+      } else if (arg === 'meta') {                              // const new_entry = {meta: copy(meta)};
+                                                                // log.push(new_entry);
+        return meta;
 
 
       // update state directly by passing in partial states
       // return the instance itself for chaining
       } else if (isObject(arg)) {                               const new_entry = {arg:copy(arg)};
-        const new_state = update_state(arg, copy(state));       new_entry.old_state = copy(state);
-        state = new_state;                                      new_entry.new_state = copy(new_state);
-                                                                log.push(new_entry);
+                                                                new_entry.old_state = copy(state);
+        const new_state = update_state(arg, copy(state));       new_entry.new_state = copy(new_state);
+        for (const key in new_state) {
+          state[key] = new_state[key];
+        };                                                      log.push(new_entry);
         return instance;
 
 
@@ -116,32 +108,6 @@ function janke (args) {
                                                                 log.push(new_entry);
           throw err;
         };
-
-      // return a copy of the log
-      } else if (arg === 'log') {                               const new_entry = {log: copy(log)};
-                                                                log.push(new_entry);
-        return copy(log);
-
-
-      // return a copy of the state
-      } else if (arg === 'state') {                             const new_entry = {state: copy(state)};
-                                                                log.push(new_entry);
-        return copy(state);
-
-
-
-      // return a copy of the name
-      } else if (arg === 'name') {                              const new_entry = {name};
-                                                                log.push(new_entry);
-        return name;
-
-
-
-      // return a reference to all functions, actions, methods
-      } else if (arg === 'stories') {                           const new_entry = {stories};
-                                                                log.push(new_entry);
-        return {actions, methods, functions};
-
 
 
       // free-variable 'this' cache
@@ -169,13 +135,38 @@ function janke (args) {
         };
 
 
+      // return a copy of the log
+      } else if (arg === 'log') {                               // const new_entry = {log: copy(log)};
+                                                                // log.push(new_entry);
+        return copy(log);
+
+
+      // return a copy of the state
+      } else if (arg === 'state') {                             // const new_entry = {state: copy(state)};
+                                                                // log.push(new_entry);
+        return copy(state);
+
+
+
+      // return a copy of the name
+      } else if (arg === 'name') {                              // const new_entry = {name};
+                                                                // log.push(new_entry);
+        return name;
+
+
+      // return a reference to all functions, actions, methods
+      } else if (arg === 'stories') {                           // const new_entry = {stories};
+                                                                // log.push(new_entry);
+        return {actions, methods, functions};
+
+
       // explicitly nothing
-      } else if ( arg === undefined ) {                         const new_entry = {undefined: null};
-                                                                log.push(new_entry);
+      } else if ( arg === undefined ) {                         // const new_entry = {undefined: null};
+                                                                // log.push(new_entry);
         return null;
 
 
-      // add a note to the log and return it
+      // add a note to the log and return the log
       } else {                                                  const new_entry = {note: copy(arg)};
                                                                 log.push(new_entry);
         return copy(log);
@@ -240,8 +231,9 @@ function janke (args) {
           } else {                                             
             const old_state = copy(state);                      new_entry.old_state = old_state;
             const new_state = update_state(result, old_state);  new_entry.new_state = new_state;
-            state = copy(new_state);
-                                                                log.push(new_entry);
+            for (const key of new_state) {
+              state[key] = new_state[key];
+            };                                                  log.push(new_entry);
             return result;
           };
         };
@@ -253,7 +245,7 @@ function janke (args) {
         instance.state_currier = function(func) {
           if (func instanceof Function) {
             function to_wrap() {
-              return func(state)(...arguments);
+              return func(copy(state))(...arguments);
             };
             return log_wrapper(to_wrap, 'something curried'); 
           } else {
@@ -264,7 +256,7 @@ function janke (args) {
         instance.state_binder = function(func) {
           if (func instanceof Function) {
             function to_wrap() {
-              return func.bind(state)(...arguments);   
+              return func.bind(copy(state))(...arguments);   
             };
             return log_wrapper(to_wrap, 'something bound');
           } else {
@@ -280,7 +272,7 @@ function janke (args) {
           if (functions[_function] instanceof Function) {
             const story = _function;
             const functionow = functions[_function];
-            const to_wrap = functionow.bind(null, state)
+            const to_wrap = functionow.bind(null, copy(state));
             instance[_function] = log_wrapper(to_wrap, story);
           };
         };
