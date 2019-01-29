@@ -224,7 +224,11 @@ function janke (args) {
           for (const key in state) {
             state[key] = new_state[key];
           };                                                  log.push(new_entry);
-          return this;
+          if (this instanceof Window) {
+            return copy(state);
+          } else {
+            return this;
+          };
         };
       };
     };
@@ -232,22 +236,18 @@ function janke (args) {
     if ( isObject(args.state) ) {
 
       // attach a currying method
-      instance.state_currier = function(func) {
+      instance.currier = function(func) {
         if (func instanceof Function) {
-          function to_wrap() {
-            return func(copy(state))(...arguments);
-          };
+          const to_wrap = func(state);
           return log_wrapper(to_wrap, 'something curried'); 
         } else {
           throw new Error('can only curry functions');
         };
       };
 
-      instance.state_binder = function(func) {
+      instance.binder = function(func) {
         if (func instanceof Function) {
-          function to_wrap() {
-            return func.bind(copy(state))(...arguments);   
-          };
+          const to_wrap = func.bind(state);
           return log_wrapper(to_wrap, 'something bound');
         } else {
           throw new Error('can only bind functions');
