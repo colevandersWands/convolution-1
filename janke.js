@@ -233,7 +233,7 @@ function janke (args) {
       };
     };
 
-    if ( isObject(args.state) ) {
+    if ( isObject(state) ) {
 
       // attach a currying method
       instance.currier = function(func, name) {
@@ -256,7 +256,7 @@ function janke (args) {
 
     };
 
-    if ( isObject(args.functions) ) {
+    if ( isObject(functions) ) {
       // attach pure functions
       for (const _function in functions) {
         if (functions[_function] instanceof Function) {
@@ -268,7 +268,7 @@ function janke (args) {
       };
     };
 
-    if ( isObject(args.actions) ) {
+    if ( isObject(actions) ) {
       // attach action curriers
       for (const action in actions) {
         if (actions[action] instanceof Function) {
@@ -283,7 +283,7 @@ function janke (args) {
       };
     };
 
-    if ( isObject(args.methods) ) {
+    if ( isObject(methods) ) {
       // attach bound methods
       for (const method in methods) {
         if (methods[method] instanceof Function) {
