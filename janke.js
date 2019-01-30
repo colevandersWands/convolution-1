@@ -346,9 +346,8 @@ janke.prototype.meta = function(pie){
                                   pointing to state, actions, methods, functions, log & name
                                   as well as access to anything else attached to this prototype
 
-                                  so in this function you can write any meta-script you please so long
-                                  as it's functions come in one object payload
-                                  simply develop your own meta function and overwrite this one
+                                  so in this function you can write any meta-script you please
+                                  simply develop your own meta function and reassign it here
                                 */
                               };
 
