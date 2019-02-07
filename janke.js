@@ -202,9 +202,10 @@ function janke (args) {
     };
 
     // binding sets the cache on a new copy of the instance
-    instance.cache = function(cache) {
+    instance.cache = function(cache, id) {                              log.push({id, cached: copy(cache)});
       const bound_to_cache = Function.prototype.bind.call(this, cache);
       const methoded = Object.setPrototypeOf(bound_to_cache, this);
+      methoded.id = id;
       return Object.freeze(methoded);
     };
 
@@ -212,8 +213,8 @@ function janke (args) {
     if ( isObject(routines) ) {
       for (const _routine in routines) {
         if (routines[_routine] instanceof Function) {
-          function wrapper() {                                          log.push({_start: _routine});
-            const result = routines[_routine].call(this, ...arguments); log.push({_end: _routine});
+          function wrapper() {                                          log.push({_start: _routine, id: this.id, args: [...arguments]});
+            const result = routines[_routine].call(this, ...arguments); log.push({_end: _routine, id: this.id, result: copy(result)});
             return result;
           };
           instance[_routine] = wrapper;
