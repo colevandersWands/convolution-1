@@ -199,11 +199,9 @@ function janke (args) {
     };
 
     // binding sets the cache on a new copy of the instance
-    //  but you want it to share same actions, so inherit
-    //  and overwrite .bind so it works intuitively
-    instance.bind = function(cache) {
-      const bound_to_cache = Function.prototype.bind.call(instance, cache);
-      const methoded = Object.setPrototypeOf(bound_to_cache, instance);
+    instance.cache = function(cache) {
+      const bound_to_cache = Function.prototype.bind.call(this, cache);
+      const methoded = Object.setPrototypeOf(bound_to_cache, this);
       return Object.freeze(methoded);
     };
 
