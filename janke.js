@@ -9,6 +9,7 @@ function janke (args) {
     clean_args.actions = isObject(args.actions) ? args.actions : 'no actions here';
     clean_args.methods = isObject(args.methods) ? args.methods : 'no methods here';
     clean_args.functions = isObject(args.functions) ? args.functions : 'no functions here';
+    clean_args.routines = isObject(args.routines) ? args.routines : 'no routines here';
 
     clean_args.name = args.name !== undefined ? args.name : 'no name here' ;
 
@@ -18,6 +19,7 @@ function janke (args) {
     clean_args.actions = 'no actions here';
     clean_args.methods = 'no methods here';
     clean_args.functions = 'no functions here';
+    clean_args.routines = 'no routines here';
 
     clean_args.name = 'no name here';
 
@@ -32,6 +34,7 @@ function janke (args) {
     meta.actions = clean_args.actions;
     meta.methods = clean_args.methods;
     meta.functions = clean_args.functions;
+    meta.routines = clean_args.routines;
     meta.name = clean_args.name;
   } else {                                                      log.push({meta: false});
     meta = 'no meta here';                                    
@@ -116,13 +119,13 @@ function janke (args) {
       //  since they're temporary and dynamic
       //  it makes sense to know which one was active 
       //  rather than what was in it
-      // many instances, one shared cache 
+      // many initializations, one shared cache 
       // eventually, make this work in node as well
       } else if (arg === 'cache') {                             const new_entry = {};
         if (this instanceof Window) {                           new_entry.no = 'cache here';
                                                                 log.push(new_entry);
           return 'no cache here';
-        } else {                                                new_entry.cache = this;
+        } else {                                                new_entry.cache = copy(this);
                                                                 log.push(new_entry);
           return this;
         };
@@ -135,8 +138,8 @@ function janke (args) {
 
 
       // return a copy of the state
-      } else if (arg === 'state') {                             // const new_entry = {state: copy(state)};
-                                                                // log.push(new_entry);
+      } else if (arg === 'state') {                             const new_entry = {state: copy(state)};
+                                                                log.push(new_entry);
         return copy(state);
 
 
@@ -149,7 +152,7 @@ function janke (args) {
       // return a reference to all functions, actions, methods
       } else if (arg === 'stories') {                           // const new_entry = {stories};
                                                                 // log.push(new_entry);
-        return {actions, methods, functions};
+        return {actions, methods, functions, routines};
 
 
       // explicitly nothing
@@ -203,6 +206,19 @@ function janke (args) {
       const bound_to_cache = Function.prototype.bind.call(this, cache);
       const methoded = Object.setPrototypeOf(bound_to_cache, this);
       return Object.freeze(methoded);
+    };
+
+    // cool things can be done with caches
+    if ( isObject(routines) ) {
+      for (const _routine in routines) {
+        if (routines[_routine] instanceof Function) {
+          function wrapper() {                                          log.push({_start: _routine});
+            const result = routines[_routine].call(this, ...arguments); log.push({_end: _routine});
+            return result;
+          };
+          instance[_routine] = wrapper;
+        };
+      };
     };
 
     // wraps all actions, functions, methods, curried or bound functions
