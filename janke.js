@@ -42,46 +42,12 @@ function janke (args) {
 
   let instance
   with (clean_args) { 
+
     instance = function me(arg) {
-
-      // call to meta method
-      if (arg instanceof Array) {                               const new_entry = {metarg: copy(arg)};
-
-        if (newed) {
-          if (!(meta instanceof janke)) {                       new_entry.you = 'killed meta';
-                                                                log.push(new_entry);
-            return 'you killed meta';
-
-          } else {
-            try {
-              const result = meta.meta(...arg);                 new_entry.result = copy(result);
-                                                                log.push(new_entry);
-              if (result instanceof Error) {                    
-                throw result;
-              } else {
-                return result;
-              };
-            } catch (err) {                                     new_entry.error = err;
-                                                                log.push(new_entry);
-              throw err;
-            };
-          };
-
-        } else {                                                new_entry.no = 'meta here';
-                                                                log.push(new_entry);
-          return meta;
-        };
-
-
-      // return meta object, if it exists
-      } else if (arg === 'meta') {                              // const new_entry = {meta: copy(meta)};
-                                                                // log.push(new_entry);
-        return meta;
-
 
       // update state directly by passing in partial states
       // return the instance itself for chaining
-      } else if (isObject(arg)) {                               const new_entry = {arg:copy(arg)};
+      if (isObject(arg)) {                                      const new_entry = {arg:copy(arg)};
                                                                 new_entry.old_state = copy(state);
         const new_state = update_state(arg, copy(state));       new_entry.new_state = copy(new_state);
         for (const key in new_state) {
@@ -107,26 +73,39 @@ function janke (args) {
         } catch(err) {                                          new_entry.unhandled_error = err;   
                                                                 log.push(new_entry);
           throw err;
-        };
+        };        
 
+      } else if (arg instanceof Array) {                        const pipe_log = [];
 
-      // free-variable 'this' cache
-      //  you can bind your instance to an object
-      //  call it with one
-      //  or set it as a property in different objects 
-      //    for more flexibility
-      // caches are logged by reference
-      //  since they're temporary and dynamic
-      //  it makes sense to know which one was active 
-      //  rather than what was in it
-      // many initializations, one shared cache 
-      // eventually, make this work in node as well
-      } else if (arg === 'cache') {                             const new_entry = {};
-        if (this instanceof Window) {                           new_entry.no = 'cache here';
-                                                                log.push(new_entry);
+        let last_result = copy(state);                          pipe_log.push(copy(state));
+        for (const item of arg) {                               
+          if (item instanceof Function) {                       
+            last_result = item(last_result);
+          } else {                                              
+            last_result = copy(item);                                 
+          };                                                    pipe_log.push(copy(last_result));
+
+        };                                                      log.push({pipe_log});
+        me(last_result);
+
+      /* free-variable 'this' cache
+        you can bind your instance to an object
+        call it with one
+        or set it as a property in different objects 
+         for more flexibility
+        caches are logged by reference
+         since they're temporary and dynamic
+         it makes sense to know which one was active 
+         rather than what was in it
+        many initializations, one shared cache 
+        eventually, make this work in node as well
+      */
+      } else if (arg === 'cache') {                             // const new_entry = {};
+        if (this instanceof Window) {                           // new_entry.no = 'cache here';
+                                                                // log.push(new_entry);
           return 'no cache here';
-        } else {                                                new_entry.cache = copy(this);
-                                                                log.push(new_entry);
+        } else {                                                // new_entry.cache = copy(this);
+                                                                // log.push(new_entry);
           return this;
         };
 
@@ -138,8 +117,8 @@ function janke (args) {
 
 
       // return a copy of the state
-      } else if (arg === 'state') {                             const new_entry = {state: copy(state)};
-                                                                log.push(new_entry);
+      } else if (arg === 'state') {                             // const new_entry = {state: copy(state)};
+                                                                // log.push(new_entry);
         return copy(state);
 
 
@@ -149,21 +128,38 @@ function janke (args) {
         return name;
 
 
-      // return a reference to all functions, actions, methods
+      // return a reference to all pre-installed 
+      //  functions, actions, methods
       } else if (arg === 'stories') {                           // const new_entry = {stories};
                                                                 // log.push(new_entry);
         return {actions, methods, functions, routines};
-
 
       // explicitly nothing
       } else if ( arg === undefined ) {                         // const new_entry = {undefined: null};
                                                                 // log.push(new_entry);
         return null;
 
+      // return meta object, if it exists
+      // like an admin-level access to all live instances
+      //  can't modify properties, but can state & log
+      } else if (arg === 'meta') {                              const new_entry = {};
+
+        if (newed) {
+          if (!(meta instanceof janke)) {                       new_entry.you = 'killed meta';
+                                                                log.push(new_entry);
+            return 'you killed meta';
+
+          } else {                                              new_entry.you = 'accessed meta';
+            return meta;
+          };
+        } else {                                                new_entry.no = 'meta here';
+                                                                log.push(new_entry);
+          return meta;
+        };
 
       // add a note to the log and return the log
-      } else {                                                  const new_entry = {note: copy(arg)};
-                                                                log.push(new_entry);
+      } else {                                                  // const new_entry = {note: copy(arg)};
+                                                                // log.push(new_entry);
         return copy(log);
 
       };
@@ -172,24 +168,7 @@ function janke (args) {
     // allows to insert note into log whenever a thing is done
     //  inserts the note and returns a reference to the instance
     instance.note = function(arg) {                             // no need to log this function
-      if ( isObject(arg) ) {                                    // it is logging embodied
-        throw new Error('notes can\'t be objects');
-      };
-      if ( arg instanceof Array ) {
-        throw new Error('notes can\'t be arrays');
-      };
-      if ( arg instanceof Function ) {
-        throw new Error('notes can\'t be functions');
-      };
-      if ( arg === 'state' 
-        || arg === 'log' 
-        || arg === 'meta' 
-        || arg === 'name' 
-        || arg === 'cache' 
-        || arg === 'stories' ) {
-          throw new Error('notes can\'t be key words');
-      };
-      this(arg);
+      log.push(arg);                                            // it is logging embodied
       return this;
     };
 
@@ -202,11 +181,11 @@ function janke (args) {
     };
 
     // binding sets the cache on a new copy of the instance
-    instance.cache = function(cache, id) {                              log.push({id, cached: copy(cache)});
-      const bound_to_cache = Function.prototype.bind.call(this, cache);
+    instance.cache = function (cache, id) {                            log.push({id, cached: copy(cache)});
+      const bound_to_cache = Function.prototype.bind.call(instance, cache);
       const methoded = Object.setPrototypeOf(bound_to_cache, this);
       methoded.id = id;
-      return Object.freeze(methoded);
+      return methoded;
     };
 
     // cool things can be done with caches
@@ -342,7 +321,7 @@ function janke (args) {
       }
     }
     function isObject(val) {
-        if (val === null || typeof val !== 'object') { 
+        if ( val === null || typeof val !== 'object' || val instanceof Array ) { 
           return false; 
         } else {
           return ( (typeof val === 'function') || (typeof val === 'object') );
@@ -363,6 +342,8 @@ janke.prototype.meta = function(pie){
 
                                   so in this function you can write any meta-script you please
                                   simply develop your own meta function and reassign it here
+
+                                  or overwrite 'meta' on any cache-bound instance for different metaing
                                 */
                               };
 
