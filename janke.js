@@ -2,7 +2,6 @@
 function janke (args) {                                       
 
   let clean_args = {};                                          const log = [];    
-
   if ( isObject(args) ) {
     clean_args.state = isObject(args.state) ? args.state : 'no state here';
 
@@ -47,13 +46,11 @@ function janke (args) {
 
       // update state directly by passing in partial states
       // return the instance itself for chaining
-      if (isObject(arg)) {                                      const new_entry = {arg:copy(arg)};
+      if (isObject(arg)) {                                      const new_entry = {parstate:copy(arg)};
                                                                 new_entry.old_state = copy(state);
-        const new_state = update_state(arg, copy(state));       new_entry.new_state = copy(new_state);
-        for (const key in new_state) {
-          state[key] = new_state[key];
-        };                                                      log.push(new_entry);
-        return instance;
+        update_state(arg, state);                               new_entry.new_state = copy(state);
+                                                                log.push(new_entry);
+        return me;
 
 
       // calls args with a copy of state
@@ -75,6 +72,8 @@ function janke (args) {
           throw err;
         };        
 
+      // seeds a pipeline with a copy of state
+      // passes on final result for state update
       } else if (arg instanceof Array) {                        const pipe_log = [];
 
         let last_result = copy(state);                          pipe_log.push(copy(state));
@@ -182,6 +181,9 @@ function janke (args) {
 
     // binding sets the cache on a new copy of the instance
     instance.cache = function (cache, id) {                            log.push({id, cached: copy(cache)});
+      if (!isObject(cache)) {
+        return new Error('cache must be an object');
+      };
       const bound_to_cache = Function.prototype.bind.call(instance, cache);
       const methoded = Object.setPrototypeOf(bound_to_cache, this);
       methoded.id = id;
@@ -206,20 +208,18 @@ function janke (args) {
     function log_wrapper(wrapped, name) {
       return function() {                                     const new_entry = {args:[...arguments]};
                                                               new_entry.name = name;
-        const result = wrapped(...arguments);                 new_entry.result = copy(result);
-        if (result instanceof Error) {                        new_entry.state = copy(state);
-                                                              new_entry.error = result;  
+                                                              new_entry.old_state = copy(state);
+        const result = wrapped(...arguments);                 new_entry.parstate = copy(result);
+
+        if (result instanceof Error) {                        new_entry.error = result;  
                                                               log.push(new_entry); 
           throw result;                                      
 
-        } else {                                             
-          const old_state = copy(state);                      new_entry.old_state = old_state;
-          const new_state = update_state(result, old_state);  new_entry.new_state = new_state;
-          for (const key in state) {
-            state[key] = new_state[key];
-          };                                                  log.push(new_entry);
+        } else {
+          update_state(result, state);                        new_entry.new_state = copy(state);
+                                                              log.push(new_entry);
           if (this instanceof Window) {
-            return copy(state);
+            return copy(state); // if bound or curried function
           } else {
             return this;
           };
@@ -230,7 +230,7 @@ function janke (args) {
     if ( isObject(state) ) {
 
       // attach a currying method
-      instance.currier = function(func, name) {
+      instance.curring = function(func, name) {
         if (func instanceof Function) {
           const to_wrap = func(state);
           return log_wrapper(to_wrap, name ? name : 'something curried'); 
@@ -239,7 +239,7 @@ function janke (args) {
         };
       };
 
-      instance.binder = function(func, name) {
+      instance.binding = function(func, name) {
         if (func instanceof Function) {
           const to_wrap = func.bind(state);
           return log_wrapper(to_wrap, name ? name : 'something bound');
@@ -247,9 +247,9 @@ function janke (args) {
           throw new Error('can only bind functions');
         };
       };
-
     };
 
+    // do not allow top-level modifications of state
     if ( isObject(functions) ) {
       // attach pure functions
       for (const _function in functions) {
@@ -262,29 +262,28 @@ function janke (args) {
       };
     };
 
+    // do not allow top-level modifications of state
     if ( isObject(actions) ) {
       // attach action curriers
       for (const action in actions) {
         if (actions[action] instanceof Function) {
           const actionow = actions[action](state);
           const story = action;
-          // cant be arrow function for 'this' reasons
-          function to_wrap() {
-            return actionow(...arguments);
-          };
-          instance[action] = log_wrapper(to_wrap, story);
+          instance[action] = log_wrapper(actionow, story);
         };
       };
     };
 
+    // read-only access to snapshot of state via 'this'
     if ( isObject(methods) ) {
       // attach bound methods
       for (const method in methods) {
         if (methods[method] instanceof Function) {
           const story = method;
           function to_wrap() {
-            return methods[method].call(state, ...arguments);   
-          };
+            const bound_to_state =  methods[method].bind(copy(state));   
+            return bound_to_state(...arguments);
+          }; 
           instance[method] = log_wrapper(to_wrap, story);
         };
       };
@@ -299,27 +298,45 @@ function janke (args) {
 
 
   // closed utility functions
-    function update_state(result, _state) {
-      const new_state = copy(_state)
-      if (isObject(result)) {
-        const state_keys = Object.keys(new_state);
+    // by side-effect, to preserve pointers
+    function update_state(parstate, state) {
+      if (isObject(parstate)) {
+        const state_keys = Object.keys(state);
+        // console.log(state_keys)
         for (let key of state_keys) {
-          if (result.hasOwnProperty(key)) {
-              new_state[key] = result[key];
+          // console.log('in')
+          // console.log('s: '+state[key], 'p: '+parstate[key]);
+          if (parstate.hasOwnProperty(key)) {
+              state[key] = parstate[key];
           };
-        }
-        return new_state;
-      } else { 
-        return new_state;
+        };
       };
     }
     function copy(thing) {
-      if (thing === Object(thing)) {
-        return JSON.parse(JSON.stringify(thing));
+      if (isObject(thing)) {
+        const clone = {};
+        for(const key in thing) {
+          if(thing !== null && typeof thing === 'object') {
+            clone[key] = copy(thing[key]);
+          } else {
+            clone[key] = thing[key];
+          };
+        }
+        return clone;
+      } else if (thing instanceof Array) {
+        const clone = [];
+        for(const item of thing) {
+          if(thing !== null && typeof thing === 'object') {
+            clone.push(copy(item));
+          } else {
+            clone.push(item);
+          };
+        }
+        return clone;
       } else {
         return thing;
       }
-    }
+    };
     function isObject(val) {
         if ( val === null || typeof val !== 'object' || val instanceof Array ) { 
           return false; 
@@ -349,3 +366,9 @@ janke.prototype.meta = function(pie){
 
 
 
+/*  a thing
+  can't have undefined in a state property or it goes away
+  say in docs use null for explicitly nothing?
+  or find a way around this?
+    i like null as a separate thing
+*/
