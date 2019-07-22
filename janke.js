@@ -346,19 +346,13 @@ function janke (args) {
     };
 };
 
-
-janke.prototype.word = () => 'word'
-janke.prototype.meta = function(pie){
-                                return {meta: this, pie, word: this.word()};
+janke.prototype.meta = function(){
                                 /* 
-                                  passing an array to your app will cause it to call this methods.
-                                    the array will be spread into this function
-                                  'this' inside here will be set to your app's 'meta' with a property
-                                  pointing to state, actions, methods, functions, log & name
-                                  as well as access to anything else attached to this prototype
-
-                                  so in this function you can write any meta-script you please
-                                  simply develop your own meta function and reassign it here
+                                  with functions on the prototype you can write any meta-script you please
+                                  "this" will point to your instance so you can write things like
+                                    instance.resetState(new_state);
+                                  that can reset state with 
+                                    this.state = new_state;
 
                                   or overwrite 'meta' on any cache-bound instance for different metaing
                                 */
