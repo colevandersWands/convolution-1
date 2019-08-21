@@ -1,4 +1,4 @@
-## Janke: the framework
+## Convolution
 
 it does nearly all of javascript, so it can be used to introduce techniques first by using it then by studying the source. (todo, make a series of simpler versions that build to this full mess)
 
