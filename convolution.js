@@ -1,5 +1,5 @@
 // {state:{}, actions:{f}, methods:{f}, functions:{f}, name:anything} -> framework instance
-function janke (args) {                                       
+function convolution (args) {                                       
 
   let clean_args = {};                                          const log = [];    
   if ( isObject(args) ) {
@@ -25,7 +25,7 @@ function janke (args) {
   };
   
   let meta;
-  const newed = this instanceof janke;  
+  const newed = this instanceof convolution;  
   if (newed) {                                                  log.push({meta: true});
     meta = this;                                              
     meta.log = log;
