@@ -144,7 +144,7 @@ function convolution (args) {
       } else if (arg === 'meta') {                              const new_entry = {};
 
         if (newed) {
-          if (!(meta instanceof janke)) {                       new_entry.you = 'killed meta';
+          if (!(meta instanceof convolution)) {                 new_entry.you = 'killed meta';
                                                                 log.push(new_entry);
             return 'you killed meta';
 
@@ -346,7 +346,7 @@ function convolution (args) {
     };
 };
 
-janke.prototype.meta = function(){
+convolution.prototype.meta = function(){
                                 /* 
                                   with functions on the prototype you can write any meta-script you please
                                   "this" will point to your instance so you can write things like
